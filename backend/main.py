@@ -38,7 +38,7 @@ vector_store = MongoDBAtlasVectorSearch(
     embedding=embeddings,
     collection=collection,
     index_name=ATLAS_VECTOR_SEARCH_INDEX_NAME,
-    text_key="text",  # Ensure the document stores raw text under this key
+    text_key="text", 
     embedding_key=EMBEDDING_KEY,
     relevance_score_fn="cosine",
 )
