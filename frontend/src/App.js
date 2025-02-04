@@ -1,10 +1,11 @@
-import Test from "./components/test" 
+import './App.css';
+import ChatBotUI from './components/ChatbotUI'
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <Test/>
+        <ChatBotUI/>
       </header>
     </div>
   );
