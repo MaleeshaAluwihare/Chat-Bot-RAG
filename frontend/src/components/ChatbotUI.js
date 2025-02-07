@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 
-function ChatbotUI() {
+export default function ChatbotUI() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -123,5 +123,3 @@ function ChatbotUI() {
     </div>
   );
 }
-
-export default ChatbotUI;
