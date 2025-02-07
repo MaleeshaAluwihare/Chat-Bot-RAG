@@ -1,3 +1,6 @@
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from langchain_ollama.llms import OllamaLLM
 from langchain_ollama import OllamaEmbeddings
 from langchain_core.prompts import ChatPromptTemplate
@@ -10,14 +13,21 @@ from pymongo import MongoClient
 import os
 
 load_dotenv()
+app = FastAPI()
+
+# Allow CORS for React frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Adjust if frontend is hosted elsewhere
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 DB_NAME = "Chatbot"
 COLLECTION_NAME = "ChatBot"
 ATLAS_VECTOR_SEARCH_INDEX_NAME = "langchain-test-index-vectorstores"
 EMBEDDING_KEY = "embedding"
-
-# Initialize Embeddings
-embeddings = OllamaEmbeddings(model="deepseek-r1:14b")
 
 # Connect to MongoDB
 MONGODB_URI = os.getenv("MONGODB_URI")
@@ -32,6 +42,9 @@ try:
 except Exception as e:
     print(f"Error connecting to MongoDB: {e}")
     exit(1)
+
+# Initialize Embeddings
+embeddings = OllamaEmbeddings(model="deepseek-r1:14b")
 
 # Initialize MongoDB Vector Store
 vector_store = MongoDBAtlasVectorSearch(
@@ -60,55 +73,50 @@ Answer:
 
 pdf_directory = "./pdfs/"
 
-def upload_pdf(file):
+class ChatRequest(BaseModel):
+    question: str
+
+@app.post("/upload")
+async def upload_pdf(file: UploadFile = File(...)):
     """Uploads the PDF file to the server."""
-    with open(os.path.join(pdf_directory, file.name), "wb") as f:
-        f.write(file.getbuffer())
+    file_path = os.path.join(pdf_directory, file.filename)
+    with open(file_path, "wb") as f:
+        f.write(await file.read())
 
-
-def load_pdf(file_path):
-    """Loads text from a PDF file."""
     loader = PDFPlumberLoader(file_path)
     documents = loader.load()
-    return documents
 
-
-def split_text(documents):
     """Splits text into chunks for vector storage."""
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=1000,
         chunk_overlap=200,
         add_start_index=True
     )
-    return text_splitter.split_documents(documents)
 
+    doc_chunks = text_splitter.split_documents(documents)
 
-def index_docs(documents):
     """Indexes the document chunks in the vector store."""
     formatted_docs = [
         {"text": doc.page_content, EMBEDDING_KEY: embeddings.embed_query(doc.page_content)}
-        for doc in documents
+        for doc in doc_chunks
     ]
     vector_store.add_documents(formatted_docs)
 
+    return {"message": "File uploaded and processed successfully"}
 
-def retrieve_docs(query):
-    """Retrieves relevant documents using similarity search."""
-    return vector_store.similarity_search(query)
+@app.post("/chat")
+async def chat(request: ChatRequest):
 
-
-def normal_chat(question):
-    """Handles general chatbot conversations."""
-    return model.invoke(question)
-
-
-def answer(question):
     """Determines whether to use RAG or normal chat based on document retrieval."""
-    documents = retrieve_docs(question)
+    question = request.question
+    documents = vector_store.similarity_search(question)
+
     if documents:
         context = "\n\n".join([doc["text"] for doc in documents])
         prompt = ChatPromptTemplate.from_template(template)
         chain = prompt | model
-        return chain.invoke({"question": question, "context": context})
+        response =  chain.invoke({"question": question, "context": context})
     else:
-        return normal_chat(question)  # Default to normal chat if no context is found
+        response =  model.invoke(question)
+
+    return {"answer": response}
