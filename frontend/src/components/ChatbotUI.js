@@ -28,7 +28,7 @@ export default function ChatbotUI() {
   // Handles sending chat messages to the backend
   const handleSend = async () => {
     if (!input.trim()) return;
-    // Add the user's message to the conversation
+
     const newMessages = [...messages, { role: "user", content: input }];
     setMessages(newMessages);
 
@@ -49,12 +49,12 @@ export default function ChatbotUI() {
   return (
     <div style={{ width: "500px", margin: "0 auto", padding: "20px", fontFamily: "Arial, sans-serif" }}>
       <h2 style={{ textAlign: "center" }}>Chatbot with RAG</h2>
-      
+
       {/* PDF File Upload */}
       <div style={{ marginBottom: "10px", textAlign: "center" }}>
         <input type="file" accept="application/pdf" onChange={handleFileUpload} />
       </div>
-      
+
       {/* Chat Messages Display */}
       <div
         style={{
@@ -88,7 +88,7 @@ export default function ChatbotUI() {
           </div>
         ))}
       </div>
-      
+
       {/* Input Area and Send Button */}
       <div style={{ display: "flex" }}>
         <input
